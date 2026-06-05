@@ -1,25 +1,13 @@
 // Lightweight wrapper around html2pdf.js for downloading DOM nodes as PDF.
 // Loaded dynamically to avoid SSR issues.
 //
-// NOTE: html2pdf.js bundles html2canvas, which CANNOT parse modern `oklch()`
-// colors (used throughout the Tailwind v4 design system). We work around this
-// by converting every `oklch(...)` value to its sRGB equivalent — using a
-// throwaway canvas context that the browser converts natively — both for the
-// document's CSS custom properties and for any inline computed colors.
+// NOTE: html2pdf.js bundles an old html2canvas that CANNOT parse modern CSS
+// color functions (oklch / oklab / lab / lch / color-mix) — all of which the
+// Tailwind v4 design system emits. We convert every such color to its sRGB
+// equivalent (via a throwaway canvas the browser converts natively) on the
+// cloned document right before it is rasterized.
 
-const COLOR_PROPS = [
-  "color",
-  "backgroundColor",
-  "borderColor",
-  "borderTopColor",
-  "borderRightColor",
-  "borderBottomColor",
-  "borderLeftColor",
-  "outlineColor",
-  "textDecorationColor",
-  "fill",
-  "stroke",
-] as const;
+const BAD_COLOR_RE = /okl(?:ab|ch)|color-mix|\blab\(|\blch\(|\bcolor\(/i;
 
 function makeConverter() {
   const ctx = document.createElement("canvas").getContext("2d");
@@ -35,17 +23,40 @@ function makeConverter() {
   };
 }
 
-// Replace any oklch(...) token inside a larger string (e.g. gradients, shadows).
-function replaceOklch(value: string, convert: (c: string) => string): string {
-  return value.replace(/oklch\([^)]*\)/gi, (match) => {
-    const rgb = convert(match);
-    return rgb && !rgb.includes("oklch") ? rgb : "#000000";
-  });
+// Replace every modern color-function token inside a value string (handles
+// nested parens, e.g. color-mix(in oklab, oklch(...) 50%, transparent)).
+function replaceColorFns(input: string, convert: (c: string) => string): string {
+  const re = /(oklch|oklab|lch|lab|color-mix|color)\(/i;
+  let s = input;
+  let guard = 0;
+  while (guard++ < 100) {
+    const m = re.exec(s);
+    if (!m) break;
+    const start = m.index;
+    let depth = 0;
+    let end = -1;
+    for (let i = start + m[0].length - 1; i < s.length; i++) {
+      if (s[i] === "(") depth++;
+      else if (s[i] === ")") {
+        depth--;
+        if (depth === 0) {
+          end = i;
+          break;
+        }
+      }
+    }
+    if (end === -1) break;
+    const token = s.slice(start, end + 1);
+    const rgb = convert(token);
+    const replacement = rgb && !BAD_COLOR_RE.test(rgb) ? rgb : "rgb(0,0,0)";
+    s = s.slice(0, start) + replacement + s.slice(end + 1);
+  }
+  return s;
 }
 
-// Convert every CSS custom property (e.g. --primary, --background, gradients)
-// that contains an oklch color into an sRGB equivalent, applied inline on the
-// clone root so all `var(--x)` references resolve to a parseable color.
+// Convert oklch/oklab/etc. found in CSS custom properties (e.g. --primary,
+// gradients) defined in same-origin stylesheets, applied inline on the clone
+// root so all `var(--x)` references resolve to a parseable color.
 function sanitizeRootVariables(root: HTMLElement, convert: (c: string) => string) {
   for (const sheet of Array.from(document.styleSheets)) {
     let rules: CSSRuleList;
@@ -61,23 +72,26 @@ function sanitizeRootVariables(root: HTMLElement, convert: (c: string) => string
         const prop = style[i];
         if (!prop.startsWith("--")) continue;
         const val = style.getPropertyValue(prop);
-        if (val && val.includes("oklch")) {
-          root.style.setProperty(prop, replaceOklch(val, convert));
+        if (val && BAD_COLOR_RE.test(val)) {
+          root.style.setProperty(prop, replaceColorFns(val, convert));
         }
       }
     }
   }
 }
 
+// Walk every element and convert any computed style value that uses a modern
+// color function into sRGB, applied inline so html2canvas can parse it.
 function sanitizeColors(root: HTMLElement, view: Window, convert: (c: string) => string) {
   const nodes = [root, ...Array.from(root.querySelectorAll<HTMLElement>("*"))];
   for (const node of nodes) {
     const cs = view.getComputedStyle(node);
-    for (const prop of COLOR_PROPS) {
-      const value = (cs as unknown as Record<string, string>)[prop];
-      if (value && value.includes("oklch")) {
+    for (let i = 0; i < cs.length; i++) {
+      const prop = cs[i];
+      const value = cs.getPropertyValue(prop);
+      if (value && BAD_COLOR_RE.test(value)) {
         try {
-          (node.style as unknown as Record<string, string>)[prop] = convert(value);
+          node.style.setProperty(prop, replaceColorFns(value, convert));
         } catch {
           /* ignore unsupported property */
         }
@@ -112,9 +126,7 @@ export async function downloadPdf(el: HTMLElement, filename: string) {
           backgroundColor: "#ffffff",
           onclone: (doc: Document) => {
             const view = doc.defaultView ?? window;
-            // 1) Convert oklch CSS variables so var() refs resolve to sRGB.
             sanitizeRootVariables(doc.documentElement, convert);
-            // 2) Convert any remaining computed oklch colors inline.
             sanitizeColors(doc.documentElement, view, convert);
           },
         },
