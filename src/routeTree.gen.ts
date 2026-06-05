@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RecuperarRouteImport } from './routes/recuperar'
 import { Route as PortalRouteImport } from './routes/portal'
 import { Route as InscripcionRouteImport } from './routes/inscripcion'
@@ -27,6 +28,11 @@ import { Route as AuthenticatedGoalsRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedAttendancesRouteImport } from './routes/_authenticated/attendances'
 import { Route as AuthenticatedInvoicesIdRouteImport } from './routes/_authenticated/invoices.$id'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RecuperarRoute = RecuperarRouteImport.update({
   id: '/recuperar',
   path: '/recuperar',
@@ -120,6 +126,7 @@ export interface FileRoutesByFullPath {
   '/inscripcion': typeof InscripcionRoute
   '/portal': typeof PortalRoute
   '/recuperar': typeof RecuperarRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/attendances': typeof AuthenticatedAttendancesRoute
   '/goals': typeof AuthenticatedGoalsRoute
   '/invoices': typeof AuthenticatedInvoicesRouteWithChildren
@@ -137,6 +144,7 @@ export interface FileRoutesByTo {
   '/inscripcion': typeof InscripcionRoute
   '/portal': typeof PortalRoute
   '/recuperar': typeof RecuperarRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/attendances': typeof AuthenticatedAttendancesRoute
   '/goals': typeof AuthenticatedGoalsRoute
   '/invoices': typeof AuthenticatedInvoicesRouteWithChildren
@@ -157,6 +165,7 @@ export interface FileRoutesById {
   '/inscripcion': typeof InscripcionRoute
   '/portal': typeof PortalRoute
   '/recuperar': typeof RecuperarRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/attendances': typeof AuthenticatedAttendancesRoute
   '/_authenticated/goals': typeof AuthenticatedGoalsRoute
   '/_authenticated/invoices': typeof AuthenticatedInvoicesRouteWithChildren
@@ -178,6 +187,7 @@ export interface FileRouteTypes {
     | '/inscripcion'
     | '/portal'
     | '/recuperar'
+    | '/sitemap.xml'
     | '/attendances'
     | '/goals'
     | '/invoices'
@@ -195,6 +205,7 @@ export interface FileRouteTypes {
     | '/inscripcion'
     | '/portal'
     | '/recuperar'
+    | '/sitemap.xml'
     | '/attendances'
     | '/goals'
     | '/invoices'
@@ -214,6 +225,7 @@ export interface FileRouteTypes {
     | '/inscripcion'
     | '/portal'
     | '/recuperar'
+    | '/sitemap.xml'
     | '/_authenticated/attendances'
     | '/_authenticated/goals'
     | '/_authenticated/invoices'
@@ -234,10 +246,18 @@ export interface RootRouteChildren {
   InscripcionRoute: typeof InscripcionRoute
   PortalRoute: typeof PortalRoute
   RecuperarRoute: typeof RecuperarRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/recuperar': {
       id: '/recuperar'
       path: '/recuperar'
@@ -410,7 +430,18 @@ const rootRouteChildren: RootRouteChildren = {
   InscripcionRoute: InscripcionRoute,
   PortalRoute: PortalRoute,
   RecuperarRoute: RecuperarRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
