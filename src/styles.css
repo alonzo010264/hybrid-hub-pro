@@ -1,0 +1,124 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-glow: var(--primary-glow);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+}
+
+:root {
+  --radius: 0.875rem;
+
+  /* Dark premium gym theme */
+  --background: oklch(0.14 0.005 20);
+  --foreground: oklch(0.98 0 0);
+
+  --surface: oklch(0.18 0.006 20);
+  --surface-elevated: oklch(0.22 0.008 20);
+
+  --card: oklch(0.18 0.006 20);
+  --card-foreground: oklch(0.98 0 0);
+
+  --popover: oklch(0.20 0.008 20);
+  --popover-foreground: oklch(0.98 0 0);
+
+  /* Brand red #E53935 */
+  --primary: oklch(0.62 0.21 26);
+  --primary-foreground: oklch(0.99 0 0);
+  --primary-glow: oklch(0.70 0.23 32);
+
+  --secondary: oklch(0.24 0.008 20);
+  --secondary-foreground: oklch(0.98 0 0);
+
+  --muted: oklch(0.24 0.006 20);
+  --muted-foreground: oklch(0.68 0.01 20);
+
+  --accent: oklch(0.78 0.16 70); /* amber */
+  --accent-foreground: oklch(0.15 0 0);
+
+  --success: oklch(0.72 0.18 150);
+  --warning: oklch(0.80 0.17 75);
+  --destructive: oklch(0.62 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.27 0.008 20);
+  --input: oklch(0.24 0.008 20);
+  --ring: oklch(0.62 0.21 26);
+
+  --sidebar: oklch(0.12 0.005 20);
+  --sidebar-foreground: oklch(0.92 0 0);
+  --sidebar-accent: oklch(0.22 0.008 20);
+
+  --gradient-primary: linear-gradient(135deg, oklch(0.62 0.21 26), oklch(0.55 0.20 22));
+  --gradient-glow: radial-gradient(circle at 50% 0%, oklch(0.62 0.21 26 / 0.18), transparent 60%);
+  --gradient-card: linear-gradient(180deg, oklch(0.20 0.008 20), oklch(0.16 0.006 20));
+
+  --shadow-glow: 0 0 40px -10px oklch(0.62 0.21 26 / 0.5);
+  --shadow-card: 0 10px 30px -12px oklch(0 0 0 / 0.6);
+}
+
+.dark {
+  --background: oklch(0.14 0.005 20);
+  --foreground: oklch(0.98 0 0);
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+
+  html, body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.02em; }
+}
+
+@utility text-gradient-primary {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility glow-ring {
+  box-shadow: var(--shadow-glow);
+}
