@@ -57,25 +57,41 @@ function sanitizeColors(root: HTMLElement, view: Window) {
 export async function downloadPdf(el: HTMLElement, filename: string) {
   const mod: any = await import("html2pdf.js");
   const html2pdf = mod.default || mod;
-  await html2pdf()
-    .set({
-      margin: 0,
-      filename,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        onclone: (doc: Document) => {
-          const view = doc.defaultView ?? window;
-          // Sanitize the whole cloned document (incl. <html>/<body>) because
-          // html2canvas also reads the root background color.
-          sanitizeColors(doc.documentElement, view);
+
+  // html2canvas reads the ROOT (html/body) background color from the *live*
+  // document — which is `oklch()` in this theme and crashes its parser. Force a
+  // plain white background on the live document during generation, then restore.
+  const htmlEl = document.documentElement;
+  const bodyEl = document.body;
+  const prevHtmlBg = htmlEl.style.backgroundColor;
+  const prevBodyBg = bodyEl.style.backgroundColor;
+  htmlEl.style.backgroundColor = "#ffffff";
+  bodyEl.style.backgroundColor = "#ffffff";
+
+  try {
+    await html2pdf()
+      .set({
+        margin: 0,
+        filename,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          onclone: (doc: Document) => {
+            const view = doc.defaultView ?? window;
+            // Sanitize the whole cloned document (incl. <html>/<body>) because
+            // html2canvas also reads element colors, which are `oklch()` too.
+            sanitizeColors(doc.documentElement, view);
+          },
         },
-      },
-      jsPDF: { unit: "pt", format: "a4", orientation: "portrait" },
-      pagebreak: { mode: ["css", "legacy"] },
-    })
-    .from(el)
-    .save();
+        jsPDF: { unit: "pt", format: "a4", orientation: "portrait" },
+        pagebreak: { mode: ["css", "legacy"] },
+      })
+      .from(el)
+      .save();
+  } finally {
+    htmlEl.style.backgroundColor = prevHtmlBg;
+    bodyEl.style.backgroundColor = prevBodyBg;
+  }
 }
