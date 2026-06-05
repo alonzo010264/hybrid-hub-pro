@@ -66,9 +66,11 @@ export async function downloadPdf(el: HTMLElement, filename: string) {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
-        onclone: (doc: Document, clonedEl: HTMLElement) => {
+        onclone: (doc: Document) => {
           const view = doc.defaultView ?? window;
-          sanitizeColors(clonedEl, view);
+          // Sanitize the whole cloned document (incl. <html>/<body>) because
+          // html2canvas also reads the root background color.
+          sanitizeColors(doc.documentElement, view);
         },
       },
       jsPDF: { unit: "pt", format: "a4", orientation: "portrait" },
