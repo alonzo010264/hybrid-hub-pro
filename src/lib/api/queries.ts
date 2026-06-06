@@ -248,26 +248,59 @@ export async function listMemberGoals() {
   return data as MemberGoal[];
 }
 
+export async function listProducts() {
+  const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false });
+  if (error) throw error;
+  return data as Product[];
+}
+
+export async function listProductSales() {
+  const { data, error } = await supabase
+    .from("product_sales")
+    .select("*, member:members(full_name, member_code)")
+    .order("sold_at", { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  return data as unknown as ProductSale[];
+}
+
+export async function listPendingPayments() {
+  const { data, error } = await supabase
+    .from("payments")
+    .select("*, member:members(full_name, member_code)")
+    .eq("status", "pending")
+    .order("paid_at", { ascending: false });
+  if (error) throw error;
+  return data as Payment[];
+}
+
 export async function getDashboardStats() {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
-  const [membersRes, plansRes, attendsRes, paymentsRes, monthlyRes, pendingReqRes, newGoalsRes] = await Promise.all([
+  const [membersRes, plansRes, attendsRes, paymentsRes, monthlyRes, pendingReqRes, newGoalsRes, salesRes] = await Promise.all([
     supabase.from("members").select("status", { count: "exact" }),
     supabase.from("membership_plans").select("id,name,color"),
     supabase.from("attendances").select("id, check_in").gte("check_in", today.toISOString()),
     supabase.from("payments").select("amount, paid_at, status").gte("paid_at", monthStart.toISOString()),
-    supabase.from("payments").select("amount, paid_at").gte("paid_at", new Date(today.getFullYear(), today.getMonth() - 5, 1).toISOString()),
+    supabase.from("payments").select("amount, paid_at, status").gte("paid_at", new Date(today.getFullYear(), today.getMonth() - 5, 1).toISOString()),
     supabase.from("inscription_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
     supabase.from("member_goals").select("id", { count: "exact", head: true }).eq("status", "new").is("assigned_trainer_id", null),
+    supabase.from("product_sales").select("amount, sold_at, status").gte("sold_at", monthStart.toISOString()),
   ]);
 
   const members = membersRes.data ?? [];
   const activeMembers = members.filter((m: any) => m.status === "active").length;
   const expiredMembers = members.filter((m: any) => m.status === "expired").length;
-  const monthlyRevenue = (paymentsRes.data ?? []).filter((p: any) => p.status === "paid").reduce((s: number, p: any) => s + Number(p.amount), 0);
+  const paymentRevenue = (paymentsRes.data ?? []).filter((p: any) => p.status === "paid").reduce((s: number, p: any) => s + Number(p.amount), 0);
+  const salesRevenue = (salesRes.data ?? []).filter((p: any) => p.status === "paid").reduce((s: number, p: any) => s + Number(p.amount), 0);
+  const monthlyRevenue = paymentRevenue + salesRevenue;
   const pendingPayments = (paymentsRes.data ?? []).filter((p: any) => p.status === "pending").length;
   const todayAttendances = (attendsRes.data ?? []).length;
+  const todayRevenue = (paymentsRes.data ?? [])
+    .filter((p: any) => p.status === "paid" && new Date(p.paid_at) >= today)
+    .reduce((s: number, p: any) => s + Number(p.amount), 0)
+    + (salesRes.data ?? []).filter((p: any) => p.status === "paid" && new Date(p.sold_at) >= today).reduce((s: number, p: any) => s + Number(p.amount), 0);
 
   const weekData: { d: string; v: number }[] = [];
   const days = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
@@ -276,18 +309,76 @@ export async function getDashboardStats() {
     weekData.push({ d: days[d.getDay()], v: 0 });
   }
   const monthly: Record<string, number> = {};
-  (monthlyRes.data ?? []).forEach((p: any) => {
+  (monthlyRes.data ?? []).filter((p: any) => p.status === "paid").forEach((p: any) => {
     const d = new Date(p.paid_at);
+    const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    monthly[k] = (monthly[k] ?? 0) + Number(p.amount);
+  });
+  (salesRes.data ?? []).filter((p: any) => p.status === "paid").forEach((p: any) => {
+    const d = new Date(p.sold_at);
     const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     monthly[k] = (monthly[k] ?? 0) + Number(p.amount);
   });
   const monthlyArr = Object.entries(monthly).sort().map(([k, v]) => ({ d: k.slice(5), v }));
 
   return {
-    activeMembers, expiredMembers, monthlyRevenue, pendingPayments, todayAttendances,
+    activeMembers, expiredMembers, monthlyRevenue, pendingPayments, todayAttendances, todayRevenue,
     totalMembers: members.length, weekData, monthlyArr,
     plans: plansRes.data ?? [],
     pendingRequests: pendingReqRes.count ?? 0,
     newGoals: newGoalsRes.count ?? 0,
   };
 }
+
+// Member portal data: their payments + invoices
+export async function getMemberPortal() {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) throw new Error("No autenticado");
+  const { data: member } = await supabase.from("members").select("*").eq("auth_user_id", u.user.id).maybeSingle();
+  if (!member) return { member: null, payments: [] as Payment[], invoices: [] as Invoice[], membership: null as any };
+  const [payRes, invRes, mmRes] = await Promise.all([
+    supabase.from("payments").select("*").eq("member_id", member.id).order("paid_at", { ascending: false }),
+    supabase.from("invoices").select("*, plan:membership_plans(name)").eq("member_id", member.id).order("issued_at", { ascending: false }),
+    supabase.from("member_memberships").select("*, plan:membership_plans(name, color)").eq("member_id", member.id).eq("is_active", true).order("end_date", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  return {
+    member: member as unknown as Member,
+    payments: (payRes.data ?? []) as Payment[],
+    invoices: (invRes.data ?? []) as unknown as Invoice[],
+    membership: mmRes.data as any,
+  };
+}
+
+// Default inscription form used when no custom config exists in the DB.
+export const DEFAULT_INSCRIPTION_CONFIG: InscriptionConfig = {
+  steps: [
+    {
+      title: "Tus datos",
+      description: "Cuéntanos quién eres para crear tu perfil.",
+      fields: [
+        { key: "full_name", label: "Nombre completo", type: "text", required: true },
+        { key: "email", label: "Correo electrónico", type: "email", required: true },
+        { key: "phone", label: "Teléfono / WhatsApp", type: "tel", required: true },
+        { key: "birth_date", label: "Fecha de nacimiento", type: "date" },
+        { key: "gender", label: "Sexo", type: "select", options: ["Masculino", "Femenino", "Otro"] },
+        { key: "address", label: "Dirección", type: "text" },
+      ],
+    },
+    {
+      title: "Elige tu plan",
+      description: "Selecciona el plan que más te conviene. El pago se confirma en recepción.",
+      fields: [
+        { key: "desired_plan_id", label: "Plan de membresía", type: "plan_select", required: true },
+        { key: "goal", label: "¿Cuál es tu objetivo principal?", type: "textarea" },
+      ],
+    },
+    {
+      title: "Seguridad de tu cuenta",
+      description: "Esto te permitirá recuperar el acceso si olvidas tu contraseña.",
+      fields: [
+        { key: "security_question", label: "Pregunta de seguridad", type: "select", required: true, options: ["¿Nombre de tu primera mascota?", "¿Ciudad donde naciste?", "¿Comida favorita?", "¿Nombre de tu mejor amigo de la infancia?"] },
+        { key: "security_answer", label: "Respuesta de seguridad", type: "text", required: true },
+      ],
+    },
+  ],
+};
