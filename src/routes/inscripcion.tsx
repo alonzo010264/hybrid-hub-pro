@@ -2,10 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getInscriptionConfig, listPlans, type FormField, type FormStep } from "@/lib/api/queries";
+import { getInscriptionConfig, listPlans, DEFAULT_INSCRIPTION_CONFIG, type FormField, type FormStep } from "@/lib/api/queries";
 import { toast } from "sonner";
 import { Check, Loader2 } from "lucide-react";
 import logoAsset from "@/assets/adames-logo.png.asset.json";
+import gymHero from "@/assets/gym-hero.jpg";
 
 export const Route = createFileRoute("/inscripcion")({
   head: () => ({
@@ -27,7 +28,9 @@ function PublicSignupPage() {
   const [values, setValues] = useState<Record<string, any>>({});
   const [done, setDone] = useState(false);
 
-  const steps: FormStep[] = cfgQ.data?.config.steps ?? [];
+  const steps: FormStep[] = (cfgQ.data?.config.steps && cfgQ.data.config.steps.length > 0)
+    ? cfgQ.data.config.steps
+    : DEFAULT_INSCRIPTION_CONFIG.steps;
   const totalSteps = steps.length;
 
   const submit = useMutation({
