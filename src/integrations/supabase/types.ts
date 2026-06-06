@@ -159,40 +159,52 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          customer_name: string | null
           description: string | null
           id: string
           issued_at: string
-          member_id: string
+          items: Json
+          kind: string
+          member_id: string | null
           method: Database["public"]["Enums"]["payment_method"]
           number: string
           payment_id: string | null
           plan_id: string | null
+          product_sale_id: string | null
           status: string
         }
         Insert: {
           amount: number
           created_at?: string
+          customer_name?: string | null
           description?: string | null
           id?: string
           issued_at?: string
-          member_id: string
+          items?: Json
+          kind?: string
+          member_id?: string | null
           method: Database["public"]["Enums"]["payment_method"]
           number?: string
           payment_id?: string | null
           plan_id?: string | null
+          product_sale_id?: string | null
           status?: string
         }
         Update: {
           amount?: number
           created_at?: string
+          customer_name?: string | null
           description?: string | null
           id?: string
           issued_at?: string
-          member_id?: string
+          items?: Json
+          kind?: string
+          member_id?: string | null
           method?: Database["public"]["Enums"]["payment_method"]
           number?: string
           payment_id?: string | null
           plan_id?: string | null
+          product_sale_id?: string | null
           status?: string
         }
         Relationships: [
@@ -482,6 +494,104 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      product_sales: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          customer_name: string | null
+          id: string
+          member_id: string | null
+          method: Database["public"]["Enums"]["payment_method"]
+          product_id: string | null
+          product_name: string
+          quantity: number
+          reference: string | null
+          sold_at: string
+          status: Database["public"]["Enums"]["payment_status"]
+          unit_price: number
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          customer_name?: string | null
+          id?: string
+          member_id?: string | null
+          method?: Database["public"]["Enums"]["payment_method"]
+          product_id?: string | null
+          product_name: string
+          quantity?: number
+          reference?: string | null
+          sold_at?: string
+          status?: Database["public"]["Enums"]["payment_status"]
+          unit_price?: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          customer_name?: string | null
+          id?: string
+          member_id?: string | null
+          method?: Database["public"]["Enums"]["payment_method"]
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          reference?: string | null
+          sold_at?: string
+          status?: Database["public"]["Enums"]["payment_status"]
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_sales_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          name: string
+          price: number
+          stock: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name: string
+          price?: number
+          stock?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name?: string
+          price?: number
+          stock?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
