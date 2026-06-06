@@ -226,7 +226,7 @@ export async function listInvoices() {
     .order("issued_at", { ascending: false })
     .limit(200);
   if (error) throw error;
-  return data as Invoice[];
+  return data as unknown as Invoice[];
 }
 
 export async function getInvoice(id: string) {
@@ -236,7 +236,7 @@ export async function getInvoice(id: string) {
     .eq("id", id)
     .single();
   if (error) throw error;
-  return data as Invoice & { member: any; plan: any };
+  return data as unknown as Invoice & { member: any; plan: any };
 }
 
 export async function listMemberGoals() {
