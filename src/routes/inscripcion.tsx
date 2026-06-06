@@ -2,10 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getInscriptionConfig, listPlans, type FormField, type FormStep } from "@/lib/api/queries";
+import { getInscriptionConfig, listPlans, DEFAULT_INSCRIPTION_CONFIG, type FormField, type FormStep } from "@/lib/api/queries";
 import { toast } from "sonner";
 import { Check, Loader2 } from "lucide-react";
 import logoAsset from "@/assets/adames-logo.png.asset.json";
+import gymHero from "@/assets/gym-hero.jpg";
 
 export const Route = createFileRoute("/inscripcion")({
   head: () => ({
@@ -27,7 +28,9 @@ function PublicSignupPage() {
   const [values, setValues] = useState<Record<string, any>>({});
   const [done, setDone] = useState(false);
 
-  const steps: FormStep[] = cfgQ.data?.config.steps ?? [];
+  const steps: FormStep[] = (cfgQ.data?.config.steps && cfgQ.data.config.steps.length > 0)
+    ? cfgQ.data.config.steps
+    : DEFAULT_INSCRIPTION_CONFIG.steps;
   const totalSteps = steps.length;
 
   const submit = useMutation({
@@ -96,10 +99,14 @@ function PublicSignupPage() {
     <div className="min-h-screen bg-background py-10 px-4 relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,oklch(0.62_0.21_26/0.18),transparent_60%)] pointer-events-none" />
       <div className="relative max-w-2xl mx-auto">
-        <div className="text-center mb-8">
-          <img src={logoAsset.url} alt="Adames Hybrid Gym" className="w-24 h-24 mx-auto drop-shadow-[0_0_25px_rgba(229,57,53,0.4)]" />
-          <h1 className="mt-4 font-display text-3xl lg:text-4xl font-bold">Únete a Adames Hybrid Gym</h1>
-          <p className="text-muted-foreground mt-2">Inscripción rápida en {totalSteps} {totalSteps === 1 ? "paso" : "pasos"}</p>
+        <div className="rounded-3xl overflow-hidden mb-8 relative border border-border">
+          <img src={gymHero} alt="Persona entrenando en Adames Hybrid Gym" className="w-full h-52 object-cover" width={832} height={1216} />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+          <div className="absolute inset-0 flex flex-col items-center justify-end pb-6 text-center px-4">
+            <img src={logoAsset.url} alt="Adames Hybrid Gym" className="w-20 h-20 drop-shadow-[0_0_25px_rgba(229,57,53,0.5)]" />
+            <h1 className="mt-2 font-display text-3xl lg:text-4xl font-bold">Únete a Adames Hybrid Gym</h1>
+            <p className="text-muted-foreground mt-1">Inscripción rápida en {totalSteps} {totalSteps === 1 ? "paso" : "pasos"}</p>
+          </div>
         </div>
 
         <div className="flex items-center justify-center gap-2 mb-8">
