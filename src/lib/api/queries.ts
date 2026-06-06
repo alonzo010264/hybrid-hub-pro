@@ -94,10 +94,20 @@ export interface InscriptionRequest {
   plan?: { name: string; price: number; color: string };
 }
 
+export interface InvoiceItem {
+  description: string;
+  detail?: string;
+  qty: number;
+  unit_price: number;
+}
+
 export interface Invoice {
   id: string;
   number: string;
-  member_id: string;
+  member_id: string | null;
+  customer_name: string | null;
+  kind: string;
+  items: InvoiceItem[];
   amount: number;
   method: PaymentMethod;
   status: "paid" | "pending" | "void";
@@ -105,6 +115,34 @@ export interface Invoice {
   issued_at: string;
   member?: { full_name: string; member_code: string; email: string | null };
   plan?: { name: string };
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  image_url: string | null;
+  category: string | null;
+  stock: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ProductSale {
+  id: string;
+  product_id: string | null;
+  product_name: string;
+  member_id: string | null;
+  customer_name: string | null;
+  quantity: number;
+  unit_price: number;
+  amount: number;
+  method: PaymentMethod;
+  status: "paid" | "pending" | "refunded";
+  reference: string | null;
+  sold_at: string;
+  member?: { full_name: string; member_code: string } | null;
 }
 
 export interface MemberGoal {
